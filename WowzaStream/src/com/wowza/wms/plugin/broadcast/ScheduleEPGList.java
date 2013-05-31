@@ -25,18 +25,18 @@ public class ScheduleEPGList {
 		map.clear();
 		JSONArray epglist = ScheduleUtils.getJSONArray(this.link);
 		if (epglist == null) {
-			ret = "Connection Failed to epg Server";
+			ret = "ScheduleEPGList: Connection Failed to epg Server";
 			throw new RuntimeException(ret);
 		}
 		if (epglist.size() == 0) {
-			ret = "ScheduleController.loadSchedule: No channel to publish";
+			ret = "ScheduleEPGList: No channel to publish";
 			throw new RuntimeException(ret);
 		}
 		for (Object obj : epglist) {
 			String link = (String) ((JSONObject) obj).get("epg");
 			int channelid = ((Long) ((JSONObject) obj).get("channelid")).intValue();
-//			ScheduleEPG epg = new ScheduleEPG(link, channelid);
-//			map.put(channelid, epg);
+			ScheduleEPG epg = new ScheduleEPG(appInstance, link, channelid);
+			map.put(channelid, epg);
 		}
 	}
 	

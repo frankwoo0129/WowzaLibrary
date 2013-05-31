@@ -8,7 +8,8 @@ import org.json.simple.JSONObject;
 
 public class ScheduleProgram {
 	
-	private static SimpleDateFormat parser = new SimpleDateFormat("yyyyMMddHHmmss");
+	public static SimpleDateFormat parser = new SimpleDateFormat("yyyyMMddHHmmss");
+
 	private final String epgId;
 	private final String filename;
 	private final long filmTime;
