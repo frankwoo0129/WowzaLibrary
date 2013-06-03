@@ -14,13 +14,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
-
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
 import com.wowza.wms.application.IApplicationInstance;
 import com.wowza.wms.logging.WMSLogger;
@@ -39,7 +35,6 @@ public class ScheduleCache {
 	private static String DELETE_PROGRAM_SQL = "delete from content where filename not in (select filename from content where endtime >= ?)";
 	private static String INSERT_PROGRAM_SQL = "insert into content values(?, ?, ?, ?, ?)";
 	private static WMSLogger log = WMSLoggerFactory.getLogger(ScheduleCache.class);
-	private static SimpleDateFormat parser = new SimpleDateFormat("yyyyMMddHHmmss");
 	
 	private String epglink;
 	private IApplicationInstance appInstance;
@@ -89,41 +84,35 @@ public class ScheduleCache {
 		doCache(CACHE_TIME_TEST);
 	}
 	
-	@SuppressWarnings("rawtypes")
 	public void doCache(long cachetimemilis) {
-		String cachetime = parser.format(new Date(System.currentTimeMillis() + cachetimemilis));
-		JSONArray epglist = ScheduleUtils.getJSONArray(epglink);
-		if (epglist == null) {
-			log.error("EPG Server Error");
+		Date cachetime = new Date(System.currentTimeMillis() + cachetimemilis);
+		
+		ScheduleEPGList epglist= null;
+		try {
+			epglist = new ScheduleEPGList(epglink);
+			epglist.init();
+		} catch (Exception e) {
+			log.error(e.getMessage());
 			return ;
 		}
 		
-		Iterator iter_epglist = epglist.iterator();
+		
+		Iterator<Integer> iter_epglist = epglist.getChannelIdSet().iterator();
 		while (iter_epglist.hasNext()) {
-			JSONObject obj = (JSONObject) iter_epglist.next();
-			
-			int channelId = ((Long) obj.get("channelid")).intValue();
-			JSONObject epg = ScheduleUtils.getJSONObject((String) obj.get("epg") + "?totimestamp=" + cachetime);
-			if (epg == null) {
-				continue ;
-			}
-			JSONArray programs = (JSONArray) epg.get("Programs");
-			if (programs == null || programs.size() == 0) {
+			ScheduleEPG epg = epglist.getScheduleEPG(iter_epglist.next());
+			int channelId = epg.getChannelId();
+			try {
+				epg.update(cachetime);
+			} catch (Exception e) {
+				log.error(e.getMessage());
 				continue;
 			}
-					
-			Iterator iter_programs = programs.iterator();
+			
+			ScheduleProgram program = null;
 			COPY_FILE:
-			while (iter_programs.hasNext()) {
-				JSONObject program = (JSONObject) iter_programs.next();
-				String suri = (String) program.get("suri");
-				String uri = (String) program.get("uri");
-				String filename = suri.substring(suri.lastIndexOf('/') + 1);
-				String starttime = (String) program.get("startTimestamp");
-				String endtime = (String) program.get("endTimestamp");
-				
-				Path copyMeFile = Paths.get(appInstance.getStreamStorageDir() + uri);
-				Path copyToFile = Paths.get(appInstance.getStreamStorageDir(), CACHE_DIRECTORY).resolve(filename);
+			while ((program = epg.getProgram()) != null) {
+				Path copyMeFile = Paths.get(appInstance.getStreamStorageDir() + program.getUri());
+				Path copyToFile = Paths.get(appInstance.getStreamStorageDir(), CACHE_DIRECTORY).resolve(program.getFileName());
 				
 				while (true) {
 					if (copyToFile.toFile().exists())
@@ -139,7 +128,7 @@ public class ScheduleCache {
 					}
 				}
 				
-				if (!addProgram(channelId, uri, filename, starttime , endtime))
+				if (!addProgram(channelId, program.getUri(), program.getFileName(), program.getStartTimeStamp() , program.getEndTimeStamp()))
 		        	log.error("Add Program to DB failed");
 			}
 			
@@ -219,7 +208,7 @@ public class ScheduleCache {
 		}
 	}
 	
-	private boolean addProgram(int channelId, String uri, String filename, String startstamp, String endstamp)  {
+	private boolean addProgram(int channelId, String uri, String filename, Date startstamp, Date endstamp)  {
 		Connection connection = getConnection();
 		
 		if (connection == null) {
@@ -233,8 +222,8 @@ public class ScheduleCache {
 			pstatement.setInt(1, channelId);
 			pstatement.setString(2, uri);
 			pstatement.setString(3, filename);
-			pstatement.setTimestamp(4, new Timestamp(parser.parse(startstamp).getTime()));
-			pstatement.setTimestamp(5, new Timestamp(parser.parse(endstamp).getTime()));
+			pstatement.setTimestamp(4, new Timestamp(startstamp.getTime()));
+			pstatement.setTimestamp(5, new Timestamp(endstamp.getTime()));
 			pstatement.executeUpdate();
 			return true;
 		} catch (Exception e) {

@@ -190,6 +190,8 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 //			}
 //		}
 		
+		
+		// Set Cache init		
 		onCache = appInstance.getProperties().getPropertyBoolean("ScheduleOnCache", onCache);
 		
 		if (onCache) {
@@ -200,8 +202,9 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 			log.info("========NO Cache========");
 		}
 		
-		loadSchedule(appInstance);
+		this.loadSchedule(appInstance);
 		
+		// Set Cache Task
 		if (onCache) {
 			if (timer == null)
 				timer = new Timer();
@@ -236,7 +239,6 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 	public void loadSchedule(IApplicationInstance appInstance) {
 		log.info("ScheduleController.loadSchedule");
 		String ret = null;
-		
 		try {
 			JSONArray epg = ScheduleUtils.getJSONArray(link);
 			if (epg == null) {

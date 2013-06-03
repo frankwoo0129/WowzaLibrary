@@ -66,6 +66,16 @@ public class ScheduleProgram {
 		return endTime;
 	}
 	
+	public static Date getTimeStamp(String timeStamp) {
+		Date time = null;
+		try {
+			time = parser.parse(timeStamp);
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		return time;
+	}
+	
 	public String getUri() {
 		return this.uri;
 	}

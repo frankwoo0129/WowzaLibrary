@@ -7,16 +7,12 @@ import java.util.Set;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
-import com.wowza.wms.application.IApplicationInstance;
-
 public class ScheduleEPGList {
 	
-	private IApplicationInstance appInstance = null;
 	private String link = null;
 	private Map<Integer, ScheduleEPG> map = new HashMap<Integer, ScheduleEPG>();
 	
-	public ScheduleEPGList(IApplicationInstance appInstance, String link) {
-		this.appInstance = appInstance;
+	public ScheduleEPGList(String link) {
 		this.link = link;
 	}
 	
@@ -35,7 +31,7 @@ public class ScheduleEPGList {
 		for (Object obj : epglist) {
 			String link = (String) ((JSONObject) obj).get("epg");
 			int channelid = ((Long) ((JSONObject) obj).get("channelid")).intValue();
-			ScheduleEPG epg = new ScheduleEPG(appInstance, link, channelid);
+			ScheduleEPG epg = new ScheduleEPG(link, channelid);
 			map.put(channelid, epg);
 		}
 	}
