@@ -3,12 +3,8 @@ package com.wowza.wms.plugin.broadcast;
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.Date;
-import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
-
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
 import com.wowza.wms.application.IApplicationInstance;
 import com.wowza.wms.logging.WMSLogger;
@@ -30,7 +26,6 @@ public class ScheduleItem implements IStreamActionNotify {
 	private String epglink;
 	private Date startTime;
 	private WMSLogger log = WMSLoggerFactory.getLogger(null);
-	private static int count = 5;
 	
 	public ScheduleItem(IApplicationInstance appInstance, Stream stream, int channelId, String epglink) {
 		if (stream == null)
@@ -64,36 +59,22 @@ public class ScheduleItem implements IStreamActionNotify {
 	
 	public void loadScheduleItem(String epgId) {
 		String ret = null;
-		JSONObject epgList = null;
-		
-		if (epgId == null)
-			epgList = ScheduleUtils.getJSONObject(epglink + "?count=" + count);
-		else
-			epgList = ScheduleUtils.getJSONObject(epglink + "?count=" + count + "&epgid=" + epgId);
-		
-		if (epgList == null) {
-			ret = "ScheduleItem: No connecction to epg Server, channelid: " + channelId;
-			log.error(ret);
-			return ;
-		}
-		JSONArray epgProgram = (JSONArray) epgList.get("Programs");
-		if (epgProgram == null || epgProgram.size() == 0) {
-			ret = "ScheduleItem: No epglist on Server";
-			log.warn(ret);
+		ScheduleEPG epg = new ScheduleEPG(epglink, channelId);
+		try {
+			if (epgId == null)
+				epg.update();
+			else
+				epg.update(epgId);
+		} catch (Exception e) {
+			log.error(e.getMessage());
 			return ;
 		}
 		
-		LinkedList<ScheduleProgram> programs = new LinkedList<ScheduleProgram>();
-		for (Object obj : epgProgram) {
-			ScheduleProgram objp = new ScheduleProgram((JSONObject) obj);
-			programs.add(objp);
-		}
-		
-		playlist = new Playlist(programs.getLast().getEPGId());
+		playlist = new Playlist(epg.getLastEPGId());
 		playlist.setRepeat(false);
 		
-		ScheduleProgram program = programs.pollFirst();
-		Date systemTime = ScheduleProgram.getTimeStamp((String) epgList.get("SystemDateTime"));
+		ScheduleProgram program = epg.getProgram();
+		Date systemTime = epg.getSystemTime();
 		startTime = program.getStartTimeStamp();
 		int sub = Long.valueOf((systemTime.getTime() - startTime.getTime())/1000).intValue();
 		String src = (onCache) ? ScheduleCache.CACHE_DIRECTORY + "/" + program.getFileName() : program.getUri();
@@ -112,9 +93,7 @@ public class ScheduleItem implements IStreamActionNotify {
 			playlist.addItem(sb.toString(), 0, filmTime);
 		}
 		
-		programs.pollLast();
-		while (!programs.isEmpty()) {
-			program = programs.pollFirst();
+		while ((program = epg.getProgram()) != null) {
 			src = (onCache) ? ScheduleCache.CACHE_DIRECTORY + "/" + program.getFileName() : program.getUri();
 			filmTime = ((Long) program.getFilmTime()).intValue();
 			srcfile = Paths.get(appInstance.getStreamStorageDir()).resolve(src).toFile();

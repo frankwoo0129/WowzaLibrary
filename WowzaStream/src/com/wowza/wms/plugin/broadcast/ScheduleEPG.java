@@ -68,4 +68,8 @@ public class ScheduleEPG {
 		return list.pollFirst();
 	}
 	
+	public String getLastEPGId() {
+		return list.getLast().getEPGId();
+	}
+	
 }
