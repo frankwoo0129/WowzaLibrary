@@ -2,11 +2,11 @@ package com.wowza.wms.plugin.broadcast;
 
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import com.wowza.wms.application.IApplication;
@@ -18,7 +18,6 @@ import com.wowza.wms.logging.WMSLogger;
 import com.wowza.wms.logging.WMSLoggerFactory;
 import com.wowza.wms.server.IServer;
 import com.wowza.wms.server.IServerNotify;
-import com.wowza.wms.stream.publish.Stream;
 import com.wowza.wms.vhost.IVHost;
 import com.wowza.wms.vhost.VHostSingleton;
 
@@ -31,6 +30,7 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 	private static IApplication app = null;
 	private static IApplicationInstance appInstance = null;
 	private static Map<Integer, ScheduleItem> streamMap = new HashMap<Integer, ScheduleItem>();
+	private static ScheduleEPGList epglist = null;
 	private final static WMSLogger log = WMSLoggerFactory.getLogger(ScheduleController.class);
 	private final static String link = "http://api.nsbg.foxconn.com/0/channels/broadcast";
 
@@ -202,8 +202,9 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 			log.info("========NO Cache========");
 		}
 		
+		epglist = new ScheduleEPGList(link);
 		this.loadSchedule(appInstance);
-		
+				
 		// Set Cache Task
 		if (onCache) {
 			if (timer == null)
@@ -247,56 +248,90 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 	public void loadSchedule(IApplicationInstance appInstance) {
 		log.info("ScheduleController.loadSchedule");
 		String ret = null;
+//		try {
+//			JSONArray epg = ScheduleUtils.getJSONArray(link);
+//			if (epg == null) {
+//				ret = "ScheduleController.loadSchedule: Connection Failed to epg Server";
+//				log.error(ret);
+//				return ;
+//			}
+//			if (epg.size() == 0) {
+//				ret = "ScheduleController.loadSchedule: No channel to publish";
+//				log.warn(ret);
+//				return ;
+//			}
+//			for (Object obj : epg) {
+//				int channelId = ((Long) ((JSONObject) obj).get("channelid")).intValue();
+//				openScheduleItem(appInstance, channelId, obj);
+//			}
+//		} catch (Exception e) {
+//			ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
+//			e.printStackTrace();
+//			log.error(ret);
+//		}
 		try {
-			JSONArray epg = ScheduleUtils.getJSONArray(link);
-			if (epg == null) {
-				ret = "ScheduleController.loadSchedule: Connection Failed to epg Server";
-				log.error(ret);
-				return ;
-			}
-			if (epg.size() == 0) {
-				ret = "ScheduleController.loadSchedule: No channel to publish";
-				log.warn(ret);
-				return ;
-			}
-			for (Object obj : epg) {
-				int channelId = ((Long) ((JSONObject) obj).get("channelid")).intValue();
-				openScheduleItem(appInstance, channelId, obj);
-			}
+			epglist.init();
 		} catch (Exception e) {
-			ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
-			e.printStackTrace();
-			log.error(ret);
+			log.error(e.getMessage());
+			return ;
+		}
+		
+		Iterator<Integer> iter = epglist.getChannelIdSet().iterator();
+		while (iter.hasNext()) {
+			try {
+				openScheduleItem(appInstance, iter.next());
+			} catch (Exception e) {
+				ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
+				e.printStackTrace();
+				log.error(ret);
+				continue;
+			}
 		}
 	}
 	
 	public void loadSchedule(IApplicationInstance appInstance, int channelId) {
 		log.info("ScheduleController.loadSchedule, channelId=" + channelId);
 		String ret = null;		
+//		try {
+//			JSONArray epg = ScheduleUtils.getJSONArray(link);
+//			if (epg == null) {
+//				ret = "ScheduleController.loadSchedule: Connection Failed to epg Server";
+//				log.error(ret);
+//				return ;
+//			}
+//			if (epg.size() == 0) {
+//				ret = "ScheduleController.loadSchedule: No channel to publish";
+//				log.warn(ret);
+//				return ;
+//			}
+//			for (Object obj : epg) {
+//				if(channelId == ((Long) ((JSONObject) obj).get("channelid")).intValue()) {
+//					openScheduleItem(appInstance, channelId, obj);
+//					break;
+//				} else
+//					continue;
+//			}
+//		} catch (Exception e) {
+//			ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
+//			e.printStackTrace();
+//			log.error(ret);
+//		}
+		
 		try {
-			JSONArray epg = ScheduleUtils.getJSONArray(link);
-			if (epg == null) {
-				ret = "ScheduleController.loadSchedule: Connection Failed to epg Server";
-				log.error(ret);
-				return ;
-			}
-			if (epg.size() == 0) {
-				ret = "ScheduleController.loadSchedule: No channel to publish";
-				log.warn(ret);
-				return ;
-			}
-			for (Object obj : epg) {
-				if(channelId == ((Long) ((JSONObject) obj).get("channelid")).intValue()) {
-					openScheduleItem(appInstance, channelId, obj);
-					break;
-				} else
-					continue;
-			}
+			epglist.init();
+		} catch (Exception e) {
+			log.error(e.getMessage());
+			return ;
+		}
+		
+		try {
+			openScheduleItem(appInstance, channelId);
 		} catch (Exception e) {
 			ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
 			e.printStackTrace();
 			log.error(ret);
 		}
+		
 	}
 	
 	
@@ -333,22 +368,31 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 		}
 	}
 	
-	private void openScheduleItem(IApplicationInstance appInstance, int channelId, Object obj) {
-		String ret = null;
+//	private void openScheduleItem(IApplicationInstance appInstance, int channelId, Object obj) {
+//		String ret = null;
+//		log.debug("ScheduleController.openScheduleItem: channelId=" + channelId);
+//		closeScheduleItem(channelId);
+//		String epgListLink = (String) ((JSONObject) obj).get("epg");
+//		if (epgListLink == null) {
+//			ret = "ScheduleController: No epg Server link";
+//			log.warn(ret);
+//			return ;
+//		}
+//		ScheduleItem newItem = new ScheduleItem(appInstance, null);
+//		streamMap.put(channelId, newItem);
+//		newItem.open();
+//		log.info("ScheduleController.openScheduleItem: channelId=" + channelId);
+//	}
+	
+	private void openScheduleItem(IApplicationInstance appInstance, int channelId) {
 		log.debug("ScheduleController.openScheduleItem: channelId=" + channelId);
-		String streamName = "stream" + channelId;
 		closeScheduleItem(channelId);
-		Stream stream = Stream.createInstance(appInstance, streamName);
-		String epgListLink = (String) ((JSONObject) obj).get("epg");
-		if (epgListLink == null) {
-			ret = "ScheduleController: No epg Server link";
-			log.warn(ret);
+		ScheduleEPG epg = epglist.getScheduleEPG(channelId);
+		if (epg == null) {
+			log.info("ScheduleController.openScheduleItem: No scheduleItem, channelid=" + channelId);
 			return ;
 		}
-		ScheduleItem newItem = new ScheduleItem(appInstance, stream, channelId, epgListLink);
-		Boolean passThruMetaData = appInstance.getProperties().getPropertyBoolean("PassthruMetaData", true);
-		appInstance.getProperties().setProperty(streamName, stream);
-		stream.setSendOnMetadata(passThruMetaData);
+		ScheduleItem newItem = new ScheduleItem(appInstance, epg);
 		streamMap.put(channelId, newItem);
 		newItem.open();
 		log.info("ScheduleController.openScheduleItem: channelId=" + channelId);

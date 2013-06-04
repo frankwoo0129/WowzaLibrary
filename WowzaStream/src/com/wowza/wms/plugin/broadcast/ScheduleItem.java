@@ -22,19 +22,14 @@ public class ScheduleItem implements IStreamActionNotify {
 	private IApplicationInstance appInstance;
 	private Stream stream;
 	private Playlist playlist;
-	private int channelId;
-	private String epglink;
+	private ScheduleEPG epg = null;
 	private Date startTime;
-	private WMSLogger log = WMSLoggerFactory.getLogger(null);
+	private static WMSLogger log = WMSLoggerFactory.getLogger(ScheduleItem.class);
 	
-	public ScheduleItem(IApplicationInstance appInstance, Stream stream, int channelId, String epglink) {
-		if (stream == null)
-			throw new NullPointerException("ScheduleItem: stream is NULL");
-
+	
+	public ScheduleItem(IApplicationInstance appInstance, ScheduleEPG epg) {
 		this.appInstance = appInstance;
-		this.stream = stream;
-		this.channelId = channelId;
-		this.epglink = epglink;
+		this.epg = epg;
 		this.mTimer = new Timer();
 		this.onCache = appInstance.getProperties().getPropertyBoolean("ScheduleOnCache", onCache);
 	}
@@ -42,7 +37,8 @@ public class ScheduleItem implements IStreamActionNotify {
 	@Override
 	public void onPlaylistItemStart(Stream stream, PlaylistItem playlistItem) {
 		if (playlistItem.getIndex() == (stream.getPlaylist().size() - 1)) {
-			loadScheduleItem(playlist.getName());
+			if (playlist.getName() != null)
+				loadScheduleItem(playlist.getName());
 		}
 		
 		try {
@@ -58,8 +54,7 @@ public class ScheduleItem implements IStreamActionNotify {
 	}
 	
 	public void loadScheduleItem(String epgId) {
-		String ret = null;
-		ScheduleEPG epg = new ScheduleEPG(epglink, channelId);
+		
 		try {
 			if (epgId == null)
 				epg.update();
@@ -75,18 +70,17 @@ public class ScheduleItem implements IStreamActionNotify {
 		
 		ScheduleProgram program = epg.getProgram();
 		if (program == null) {
-			log.warn("No EPG to play, channelId: " + channelId);
+			log.warn("ScheduleItem ChannelId "+ epg.getChannelId() + ": No EPG to play");
 			return ;
 		}
-		Date systemTime = epg.getSystemTime();
+		
 		startTime = program.getStartTimeStamp();
-		int sub = Long.valueOf((systemTime.getTime() - startTime.getTime())/1000).intValue();
+		int sub = Long.valueOf((epg.getSystemTime().getTime() - startTime.getTime())/1000).intValue();
 		String src = (onCache) ? ScheduleCache.CACHE_DIRECTORY + "/" + program.getFileName() : program.getUri();
 		int filmTime = ((Long) program.getFilmTime()).intValue();
 		File srcfile = Paths.get(appInstance.getStreamStorageDir()).resolve(src).toFile();
 		if (!srcfile.exists()) {
-			ret = "ScheduleItem ChannelId "+ channelId + ": File is Not Found: " + src;
-			log.error(ret);
+			log.error("ScheduleItem ChannelId "+ epg.getChannelId() + ": File is Not Found: " + src);
 			return ;
 		}
 		StringBuilder sb = new StringBuilder();
@@ -102,8 +96,7 @@ public class ScheduleItem implements IStreamActionNotify {
 			filmTime = ((Long) program.getFilmTime()).intValue();
 			srcfile = Paths.get(appInstance.getStreamStorageDir()).resolve(src).toFile();
 			if (!srcfile.exists()) {
-				ret = "ScheduleItem ChannelId "+ channelId + ": File is Not Found: " + src;
-				log.error(ret);
+				log.error("ScheduleItem ChannelId "+ epg.getChannelId() + ": File is Not Found: " + src);
 				return ;
 			}
 			sb.delete(0, sb.length());
@@ -130,6 +123,12 @@ public class ScheduleItem implements IStreamActionNotify {
 	}
 	
 	public void open() {
+		String streamName = "stream" + epg.getChannelId();
+		if (stream != null)
+			stream.close();
+		stream = Stream.createInstance(appInstance, streamName);
+		Boolean passThruMetaData = appInstance.getProperties().getPropertyBoolean("PassthruMetaData", true);
+		stream.setSendOnMetadata(passThruMetaData);
 		stream.addListener(this);
 		this.loadScheduleItem(null);
 	}
@@ -144,6 +143,7 @@ public class ScheduleItem implements IStreamActionNotify {
 	}
 	
 	public int getChannelId() {
-		return this.channelId;
+		return this.epg.getChannelId();
 	}
+	
 }
