@@ -208,13 +208,21 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 		if (onCache) {
 			if (timer == null)
 				timer = new Timer();
-			TimerTask task = new TimerTask(){
+			TimerTask doCacheTask = new TimerTask(){
 				@Override
 				public void run() {
 					cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
 				}
 			};
-			timer.scheduleAtFixedRate(task, 0, ScheduleCache.CACHE_TIME_TEST);
+			timer.scheduleAtFixedRate(doCacheTask, 0, ScheduleCache.CACHE_TIME_TEST);
+			
+			TimerTask doCleanCacheTask = new TimerTask() {
+				@Override
+				public void run() {
+					cache.doCleanCache();
+				}
+			};
+			timer.scheduleAtFixedRate(doCleanCacheTask, 0, ScheduleCache.CACHE_TIME_CLEAN);
 		}
 		
 	}
@@ -257,6 +265,7 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 			}
 		} catch (Exception e) {
 			ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
+			e.printStackTrace();
 			log.error(ret);
 		}
 	}
@@ -284,7 +293,8 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 					continue;
 			}
 		} catch (Exception e) {
-			ret = "ScheduleController.loadSchedule: " + e.getClass().getName();
+			ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
+			e.printStackTrace();
 			log.error(ret);
 		}
 	}

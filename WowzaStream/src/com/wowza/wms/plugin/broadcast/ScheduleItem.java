@@ -74,6 +74,10 @@ public class ScheduleItem implements IStreamActionNotify {
 		playlist.setRepeat(false);
 		
 		ScheduleProgram program = epg.getProgram();
+		if (program == null) {
+			log.warn("No EPG to play, channelId: " + channelId);
+			return ;
+		}
 		Date systemTime = epg.getSystemTime();
 		startTime = program.getStartTimeStamp();
 		int sub = Long.valueOf((systemTime.getTime() - startTime.getTime())/1000).intValue();

@@ -69,7 +69,10 @@ public class ScheduleEPG {
 	}
 	
 	public String getLastEPGId() {
-		return list.getLast().getEPGId();
+		if (!list.isEmpty())
+			return list.getLast().getEPGId();
+		else
+			return null;
 	}
 	
 }

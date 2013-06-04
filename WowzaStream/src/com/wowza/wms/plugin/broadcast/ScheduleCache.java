@@ -26,6 +26,7 @@ public class ScheduleCache {
 	
 	public static final String CACHE_DIRECTORY = "ScheduleCache";
 	public static final String CACHE_DB_FILENAME = "content.db";
+	public static final long CACHE_TIME_CLEAN = 1000*60*60*24;
 	public static final long CACHE_TIME_INTERVAL = 1000*60*60*6;
 	public static final long CACHE_TIME_TEST = 1000*60*60;
 	
