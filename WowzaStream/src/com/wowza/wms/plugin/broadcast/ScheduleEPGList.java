@@ -29,9 +29,8 @@ public class ScheduleEPGList {
 			throw new RuntimeException(ret);
 		}
 		for (Object obj : epglist) {
-			String link = (String) ((JSONObject) obj).get("epg");
 			int channelid = ((Long) ((JSONObject) obj).get("channelid")).intValue();
-			ScheduleEPG epg = new ScheduleEPG(link, channelid);
+			ScheduleEPG epg = new ScheduleEPG((JSONObject) obj);
 			map.put(channelid, epg);
 		}
 	}

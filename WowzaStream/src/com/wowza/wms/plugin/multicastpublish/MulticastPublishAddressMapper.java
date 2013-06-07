@@ -1,8 +1,5 @@
 package com.wowza.wms.plugin.multicastpublish;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,10 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.wowza.util.SystemUtils;
 import com.wowza.wms.application.IApplicationInstance;
 import com.wowza.wms.application.WMSProperties;
 import com.wowza.wms.logging.WMSLoggerFactory;
+import com.wowza.wms.plugin.broadcast.ScheduleEPG;
+import com.wowza.wms.plugin.broadcast.ScheduleEPGList;
 import com.wowza.wms.rtp.model.RTPDestination;
 
 public class MulticastPublishAddressMapper
@@ -130,7 +128,7 @@ public class MulticastPublishAddressMapper
 	
 	private IApplicationInstance appInstance = null;
 	
-	private String multicastMapPath = "${com.wowza.wms.context.VHostConfigHome}/conf/multicastmap.txt";
+//	private String multicastMapPath = "${com.wowza.wms.context.VHostConfigHome}/conf/multicastmap.txt";
 	private String multicastStartingAddress = "239.1.1.0";
 	private int multicastStartingPort = 10000;
 	private int multicastAddressIncrementMode = MULTICASTADDRESSINCREMENTMODE_ADDRESS;
@@ -148,8 +146,8 @@ public class MulticastPublishAddressMapper
 	private Map<String, MapEntry> recycleDestinationMap = new HashMap<String, MapEntry>();
 	private List<RecycleAddress> recyleAddressList = new ArrayList<RecycleAddress>();
 	private Set<String> recyleAddressSet = new HashSet<String>();
-	private long mapFileLastModDate = -1;
-	private long mapFileLastSize = -1;
+//	private long mapFileLastModDate = -1;
+//	private long mapFileLastSize = -1;
 	
 	public void init(IApplicationInstance appInstance)
 	{
@@ -159,7 +157,7 @@ public class MulticastPublishAddressMapper
 
 		multicastStartingAddress = props.getPropertyStr("multicastPublishMulticastStartingAddress", multicastStartingAddress);
 		multicastStartingPort = props.getPropertyInt("multicastPublishMulticastStartingPort", multicastStartingPort);
-		multicastMapPath = props.getPropertyStr("multicastPublishMulticastMapPath", multicastMapPath);
+//		multicastMapPath = props.getPropertyStr("multicastPublishMulticastMapPath", multicastMapPath);
 		multicastMapNameDelimiter = props.getPropertyStr("multicastPublishMulticastMapNameDelimiter", multicastMapNameDelimiter);
 		multicastAddressIncrement = props.getPropertyInt("multicastPublishMulticastAddressIncrement", multicastAddressIncrement);
 		MPEGTSOut = props.getPropertyBoolean("multicastPublishMPEGTSOut", MPEGTSOut);
@@ -179,10 +177,10 @@ public class MulticastPublishAddressMapper
 		pathMap.put("com.wowza.wms.context.Application", appInstance.getApplication().getName());
 		pathMap.put("com.wowza.wms.context.ApplicationInstance", appInstance.getName());
 		
-		multicastMapPath =  SystemUtils.expandEnvironmentVariables(multicastMapPath, pathMap);
-		File file = new File(multicastMapPath);
-		if (!file.exists())
-			WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).error("MulticastPublishAddressMapper.init["+appInstance.getContextStr()+"]: Multicast map file is missing: "+ multicastMapPath);
+//		multicastMapPath =  SystemUtils.expandEnvironmentVariables(multicastMapPath, pathMap);
+//		File file = new File(multicastMapPath);
+//		if (!file.exists())
+//			WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).error("MulticastPublishAddressMapper.init["+appInstance.getContextStr()+"]: Multicast map file is missing: "+ multicastMapPath);
 
 		currMulticastAddress = 0;
 		String[] parts = multicastStartingAddress.trim().split("[.]");
@@ -205,7 +203,8 @@ public class MulticastPublishAddressMapper
 		
 		WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).info("MulticastPublishAddressMapper.init["+appInstance.getContextStr()+"]: startingAddress:"+multicastAddressToString(currMulticastAddress)+":"+multicastStartingPort+" incMode:"+incrementMode);		
 
-		loadMapFile();
+//		loadMapFile();
+		loadMap();
 	}
 	
 	public void addRecycleAddress(String host, int port)
@@ -297,31 +296,31 @@ public class MulticastPublishAddressMapper
 		return ret;
 	}
 	
-	public boolean mapFileChanged()
-	{
-		long lastModDate = -1;
-		long lastSize = -1;
-
-		try
-		{
-			while(true)
-			{
-				File file = new File(multicastMapPath);
-				if (!file.exists())
-					break;
-				
-				lastModDate = file.lastModified();
-				lastSize = file.length();
-				break;
-			}
-		}
-		catch(Exception e)
-		{
-			WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).error("MulticastPublishAddressMapper.loadMapFile: "+ e.toString());
-		}
-
-		return (lastModDate > 0 && lastModDate != this.mapFileLastModDate) || (lastSize > 0 && lastSize != mapFileLastSize);
-	}
+//	public boolean mapFileChanged()
+//	{
+//		long lastModDate = -1;
+//		long lastSize = -1;
+//
+//		try
+//		{
+//			while(true)
+//			{
+//				File file = new File(multicastMapPath);
+//				if (!file.exists())
+//					break;
+//				
+//				lastModDate = file.lastModified();
+//				lastSize = file.length();
+//				break;
+//			}
+//		}
+//		catch(Exception e)
+//		{
+//			WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).error("MulticastPublishAddressMapper.loadMapFile: "+ e.toString());
+//		}
+//
+//		return (lastModDate > 0 && lastModDate != this.mapFileLastModDate) || (lastSize > 0 && lastSize != mapFileLastSize);
+//	}
 	
 	public MyAddress parseAddress(String addressStr)
 	{
@@ -496,109 +495,153 @@ public class MulticastPublishAddressMapper
 		return rtpDestination;
 	}
 	
-	public void loadMapFile()
-	{
+//	public void loadMapFile()
+//	{
+//		Map<String, MapEntry> newMap = new HashMap<String, MapEntry>();
+//		
+//		long lastModDate = -1;
+//		long lastSize = -1;
+//		boolean successful = false;
+//		
+//		BufferedReader inf = null;
+//		try
+//		{
+//			while(true)
+//			{
+//				File file = new File(multicastMapPath);
+//				if (!file.exists())
+//					break;
+//				
+//				inf = new BufferedReader(new FileReader(file));
+//				String line;
+//				while ((line = inf.readLine()) != null)
+//				{
+//					line = line.trim();
+//					if (line.startsWith("#"))
+//						continue;
+//					if (line.length() == 0)
+//						continue;
+//					
+//					String streamName = null;
+//					String alias = null;
+//					int pos = line.indexOf(multicastMapNameDelimiter);
+//					if (pos >= 0)
+//					{
+//						streamName = line.substring(0, pos).trim();
+//						alias = line.substring(pos+1).trim();
+//					}
+//					else
+//						continue;
+//					
+//					if (streamName != null && alias != null)
+//					{
+//						MapEntry mapEntry = newMap.get(streamName);
+//						if (mapEntry == null)
+//						{
+//							mapEntry = new MapEntry(streamName);
+//							newMap.put(streamName, mapEntry);
+//						}
+//						
+//						RTPDestination rtpDestination = parseAlias(alias);
+//
+//						mapEntry.addDestination(new MapEntryDestination(rtpDestination));
+//
+//						//WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).info(streamName+"="+rtpDestination.toString());
+//					}
+//					
+//				}
+//				inf.close();
+//				inf = null;
+//				
+//				lastModDate = file.lastModified();
+//				lastSize = file.length();
+//				successful = true;
+//				break;
+//			}
+//		}
+//		catch(Exception e)
+//		{
+//			WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).error("MulticastPublishAddressMapper.loadMapFile: "+ e.toString());
+//			e.printStackTrace();
+//		}
+//		
+//		try
+//		{
+//			if (inf != null)
+//				inf.close();
+//			inf = null;	
+//		}
+//		catch(Exception e)
+//		{
+//			WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).error("MulticastPublishAddressMapper.loadMapFile[close]: "+ e.toString());
+//		}
+//
+//		if (successful)
+//		{
+//			synchronized(lock)
+//			{
+//				streamNameMap.clear();
+//				streamNameMap.putAll(newMap);
+//				
+//				if (lastModDate > 0)
+//				{
+//					this.mapFileLastModDate = lastModDate;
+//					this.mapFileLastSize = lastSize;
+//				}
+//				
+//				WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).info("MulticastPublishAddressMapper.loadMapFile: entries:"+ streamNameMap.size());
+//			}
+//		}
+//	}
+	
+	public void loadMap() {
 		Map<String, MapEntry> newMap = new HashMap<String, MapEntry>();
-		
-		long lastModDate = -1;
-		long lastSize = -1;
 		boolean successful = false;
 		
-		BufferedReader inf = null;
-		try
-		{
-			while(true)
-			{
-				File file = new File(multicastMapPath);
-				if (!file.exists())
-					break;
+		try {
+			ScheduleEPGList epglist = new ScheduleEPGList("http://api.nsbg.foxconn.com/0/channels/broadcast");
+			Iterator<Integer> iter = epglist.getChannelIdSet().iterator();
+			while (iter.hasNext()) {
+				ScheduleEPG epg = epglist.getScheduleEPG(iter.next());
+				String streamName = "stream" + epg.getChannelId();
+				StringBuffer alias = new StringBuffer();
+				alias.append('{');
+				alias.append("name:").append(streamName).append(',');
+				alias.append("video:").append(epg.getMulticastGroup()).append(':').append(epg.getMultivastPort()).append(',');
+				alias.append("audio:").append(epg.getMulticastGroup()).append(':').append(epg.getMultivastPort()+2).append(',');
+				alias.append("isRTPWrapped:").append("false");
+				alias.append('}');
 				
-				inf = new BufferedReader(new FileReader(file));
-				String line;
-				while ((line = inf.readLine()) != null)
-				{
-					line = line.trim();
-					if (line.startsWith("#"))
-						continue;
-					if (line.length() == 0)
-						continue;
-					
-					String streamName = null;
-					String alias = null;
-					int pos = line.indexOf(multicastMapNameDelimiter);
-					if (pos >= 0)
-					{
-						streamName = line.substring(0, pos).trim();
-						alias = line.substring(pos+1).trim();
-					}
-					else
-						continue;
-					
-					if (streamName != null && alias != null)
-					{
-						MapEntry mapEntry = newMap.get(streamName);
-						if (mapEntry == null)
-						{
-							mapEntry = new MapEntry(streamName);
-							newMap.put(streamName, mapEntry);
-						}
-						
-						RTPDestination rtpDestination = parseAlias(alias);
-
-						mapEntry.addDestination(new MapEntryDestination(rtpDestination));
-
-						//WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).info(streamName+"="+rtpDestination.toString());
-					}
-					
+				MapEntry mapEntry = newMap.get(streamName);
+				if (mapEntry == null) {
+					mapEntry = new MapEntry(streamName);
+					newMap.put(streamName, mapEntry);
 				}
-				inf.close();
-				inf = null;
-				
-				lastModDate = file.lastModified();
-				lastSize = file.length();
-				successful = true;
-				break;
+				RTPDestination rtpDestination = parseAlias(alias.toString());
+				mapEntry.addDestination(new MapEntryDestination(rtpDestination));
 			}
-		}
-		catch(Exception e)
-		{
-			WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).error("MulticastPublishAddressMapper.loadMapFile: "+ e.toString());
+			successful = true;
+		} catch (Exception e) {
+			WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).error("MulticastPublishAddressMapper.loadMap: "+ e.toString());
 			e.printStackTrace();
 		}
 		
-		try
-		{
-			if (inf != null)
-				inf.close();
-			inf = null;	
-		}
-		catch(Exception e)
-		{
-			WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).error("MulticastPublishAddressMapper.loadMapFile[close]: "+ e.toString());
-		}
-
-		if (successful)
-		{
-			synchronized(lock)
-			{
+		if (successful)	{
+			synchronized(lock) {
 				streamNameMap.clear();
 				streamNameMap.putAll(newMap);
 				
-				if (lastModDate > 0)
-				{
-					this.mapFileLastModDate = lastModDate;
-					this.mapFileLastSize = lastSize;
-				}
-				
 				WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).info("MulticastPublishAddressMapper.loadMapFile: entries:"+ streamNameMap.size());
+				
 			}
 		}
 	}
 	
 	public void work()
 	{
-		if (mapFileChanged())
-			loadMapFile();
+//		if (mapFileChanged())
+//			loadMapFile();
+		loadMap();
 		
 		long currTime = System.currentTimeMillis();
 		

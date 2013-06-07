@@ -14,11 +14,23 @@ public class ScheduleEPG {
 	private final int channelId;
 	private LinkedList<ScheduleProgram> list;
 	private String systemTime = null;
+	private final String multicastGroup;
+	private final int multicastPort;
+	private final int channelPort;
+	private final int ttl;
 		
-	public ScheduleEPG(String epgLink, int channelId) {
-		this.epgLink = epgLink;
-		this.channelId = channelId;
-		this.list = new LinkedList<ScheduleProgram>();
+	public ScheduleEPG(JSONObject obj) {
+		try {
+			this.epgLink = (String) obj.get("epg");
+			this.channelId = ((Long) obj.get("channelid")).intValue();
+			this.multicastGroup = (String) obj.get("MulticastGroup");
+			this.multicastPort = ((Long) obj.get("MulticastPort")).intValue();
+			this.channelPort = ((Long) obj.get("ChannelPort")).intValue();
+			this.ttl = ((Long) obj.get("ttl")).intValue();
+			this.list = new LinkedList<ScheduleProgram>();
+		} catch (Exception e) {
+			throw new RuntimeException("JSON Error");
+		}
 	}
 	
 	public int getChannelId() {
@@ -27,6 +39,22 @@ public class ScheduleEPG {
 	
 	public Date getSystemTime() {
 		return ScheduleProgram.getTimeStamp(this.systemTime);
+	}
+	
+	public String getMulticastGroup() {
+		return this.multicastGroup;
+	}
+	
+	public int getMultivastPort() {
+		return this.multicastPort;
+	}
+	
+	public int getChannelPort() {
+		return this.channelPort;
+	}
+	
+	public int getTimetoLive() {
+		return this.ttl;
 	}
 	
 	private void doUpdate(String link) {
