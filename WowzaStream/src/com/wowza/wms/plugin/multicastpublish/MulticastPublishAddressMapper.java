@@ -600,6 +600,7 @@ public class MulticastPublishAddressMapper
 		
 		try {
 			ScheduleEPGList epglist = new ScheduleEPGList("http://api.nsbg.foxconn.com/0/channels/broadcast");
+			epglist.init();
 			Iterator<Integer> iter = epglist.getChannelIdSet().iterator();
 			while (iter.hasNext()) {
 				ScheduleEPG epg = epglist.getScheduleEPG(iter.next());
@@ -611,7 +612,7 @@ public class MulticastPublishAddressMapper
 				alias.append("audio:").append(epg.getMulticastGroup()).append(':').append(epg.getMultivastPort()+2).append(',');
 				alias.append("isRTPWrapped:").append("false");
 				alias.append('}');
-				
+				WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).info("=========================" + alias.toString());
 				MapEntry mapEntry = newMap.get(streamName);
 				if (mapEntry == null) {
 					mapEntry = new MapEntry(streamName);
@@ -641,7 +642,7 @@ public class MulticastPublishAddressMapper
 	{
 //		if (mapFileChanged())
 //			loadMapFile();
-		loadMap();
+//		loadMap();
 		
 		long currTime = System.currentTimeMillis();
 		
