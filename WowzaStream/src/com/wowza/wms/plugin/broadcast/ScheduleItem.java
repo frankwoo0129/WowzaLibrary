@@ -54,7 +54,6 @@ public class ScheduleItem implements IStreamActionNotify {
 	}
 	
 	public void loadScheduleItem(String epgId) {
-		
 		try {
 			if (epgId == null)
 				epg.update();
@@ -74,34 +73,30 @@ public class ScheduleItem implements IStreamActionNotify {
 			return ;
 		}
 		
-		startTime = program.getStartTimeStamp();
-		int sub = Long.valueOf((epg.getSystemTime().getTime() - startTime.getTime())/1000).intValue();
-		String src = (onCache) ? ScheduleCache.CACHE_DIRECTORY + "/" + program.getFileName() : program.getUri();
-		int filmTime = ((Long) program.getFilmTime()).intValue();
-		File srcfile = Paths.get(appInstance.getStreamStorageDir()).resolve(src).toFile();
-		if (!srcfile.exists()) {
-			log.error("ScheduleItem ChannelId "+ epg.getChannelId() + ": File is Not Found: " + src);
-			return ;
-		}
-		StringBuilder sb = new StringBuilder();
-		sb.append(src).insert(src.lastIndexOf('/') + 1, "mp4:");
-		if (sub > 0 && epgId == null) {
-			playlist.addItem(sb.toString(), sub, filmTime-sub);
-		} else {
-			playlist.addItem(sb.toString(), 0, filmTime);
-		}
-		
+		boolean isFirstProgram = true;
 		while ((program = epg.getProgram()) != null) {
-			src = (onCache) ? ScheduleCache.CACHE_DIRECTORY + "/" + program.getFileName() : program.getUri();
-			filmTime = ((Long) program.getFilmTime()).intValue();
-			srcfile = Paths.get(appInstance.getStreamStorageDir()).resolve(src).toFile();
+			String src = (onCache) ? ScheduleCache.CACHE_DIRECTORY + "/" + program.getFileName() : program.getUri();
+			int filmTime = ((Long) program.getFilmTime()).intValue();
+			File srcfile = Paths.get(appInstance.getStreamStorageDir()).resolve(src).toFile();
 			if (!srcfile.exists()) {
 				log.error("ScheduleItem ChannelId "+ epg.getChannelId() + ": File is Not Found: " + src);
 				return ;
 			}
-			sb.delete(0, sb.length());
+			StringBuilder sb = new StringBuilder();
 			sb.append(src).insert(src.lastIndexOf('/') + 1, "mp4:");
-			playlist.addItem(sb.toString(), 0, filmTime);
+			
+			if (isFirstProgram) {
+				startTime = program.getStartTimeStamp();
+				int sub = Long.valueOf((epg.getSystemTime().getTime() - startTime.getTime())/1000).intValue();
+				if (sub > 0 && epgId == null) {
+					playlist.addItem(sb.toString(), sub, filmTime-sub);
+				} else {
+					playlist.addItem(sb.toString(), 0, filmTime);
+				}
+				isFirstProgram = false;
+			} else {
+				playlist.addItem(sb.toString(), 0, filmTime);
+			}
 		}
 		
 		mTask = new TimerTask() {
@@ -110,8 +105,8 @@ public class ScheduleItem implements IStreamActionNotify {
 					log.info("ScheduledItem: '" + stream.getName() + "' is now live");
 				else {
 					log.warn("ScheduledItem: '" + stream.getName() + "' is NOT live");
-					stream.removeListener(ScheduleItem.this);
 					close();
+					open();
 				}
 			}
 		};
