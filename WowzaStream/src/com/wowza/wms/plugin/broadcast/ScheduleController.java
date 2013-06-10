@@ -41,7 +41,7 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 		log.info("onHTTPRequest");
 		
 		String commit = req.getParameter("commit");
-		String channelId = req.getParameter("channelId");
+		String channelId = req.getParameter("channelid");
 		JSONObject json = new JSONObject();
 		
 		if ("start".equals(commit)) {
@@ -52,6 +52,7 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 				int id = Integer.valueOf(channelId);
 				loadSchedule(app.getAppInstance("_definst_"), id);
 				json.put("msg", "starting schedule: channel=" + id);
+				json.put("channelid", id);
 			}
 		} else if ("stop".equals(commit)) {
 			if (channelId == null) {
@@ -61,6 +62,7 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 				int id = Integer.valueOf(channelId);
 				closeScheduleItem(id);
 				json.put("msg", "stopping schedule: channel=" + id);
+				json.put("channelid", id);
 			}
 		} else if ("reload".equals(commit)) {
 			reloadSchedule();
