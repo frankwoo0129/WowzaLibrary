@@ -65,8 +65,15 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 				json.put("channelid", id);
 			}
 		} else if ("reload".equals(commit)) {
-			reloadSchedule();
-			json.put("msg", "Reloading all schedule");
+			if (channelId == null) {
+				reloadSchedule();
+				json.put("msg", "Reloading all schedule");
+			} else {
+				int id = Integer.valueOf(channelId);
+				reloadSchedule(id);
+				json.put("msg", "Reloading schedule: channel=" + id);
+				json.put("channelid", id);
+			}
 		} else {
 			json.put("msg", "No commit");
 		}
@@ -367,6 +374,18 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 			} catch(Exception e) {
 				log.error("ScheduleController.reloadSchedule: Error from reloadSchedule Stream" + entry.getValue().getChannelId() + " is '" + e.getClass().getName() + "'");
 			}
+		}
+	}
+	
+	public void reloadSchedule(int channelId) {
+		try {
+			ScheduleItem item = streamMap.get(channelId);
+			if (item != null) {
+				item.loadScheduleItem(null);
+				log.info("Reload Schedule Stream: " + channelId);
+			}
+		} catch(Exception e) {
+			log.error("ScheduleController.reloadSchedule: Error from reloadSchedule Stream" + channelId + " is '" + e.getClass().getName() + "'");
 		}
 	}
 	
