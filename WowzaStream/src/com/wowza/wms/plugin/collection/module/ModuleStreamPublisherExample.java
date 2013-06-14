@@ -185,19 +185,16 @@ public class ModuleStreamPublisherExample extends ModuleBase {
                         " for:"+mStart.toString());
         }
         
-        public void stop(){
-            if (mTimer != null){
-                mTimer.cancel();
-                mTimer=null;
-                getLogger().info("cancelled playlist: "+mPL.getName()+
-                        " on stream: "+mStream.getName()+
-                        " for:"+mStart.toString());
-            }
-        }
-        
-        
-        
-    }
+//        public void stop(){
+//            if (mTimer != null){
+//                mTimer.cancel();
+//                mTimer=null;
+//                getLogger().info("cancelled playlist: "+mPL.getName()+
+//                        " on stream: "+mStream.getName()+
+//                        " for:"+mStart.toString());
+//            }
+//        }
+	}
 
 	class StreamListener implements IStreamActionNotify
     {
