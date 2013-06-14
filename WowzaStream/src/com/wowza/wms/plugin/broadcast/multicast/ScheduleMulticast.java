@@ -1,8 +1,12 @@
 package com.wowza.wms.plugin.broadcast.multicast;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.wowza.util.HTTPUtils;
 import com.wowza.util.SystemUtils;
@@ -23,17 +27,18 @@ public class ScheduleMulticast extends ModuleBase {
 	
 	private String sdpStorageDir = "${com.wowza.wms.context.VHostConfigHome}/applications/${com.wowza.wms.context.Application}/sdp";
 	private IApplicationInstance appInstance = null;
-//	private RTPPushPublishSession rtpPushPublishSession;
-//	private RTPDestination rtpDestination;
-//	private String sdpData;
-	
-//	private Object lock = new Object();
+	private Map<IMediaStream, ScheduleMulticastSession> streamToSession = new HashMap<IMediaStream, ScheduleMulticastSession>();
+	private Map<String, ScheduleMulticastSession> streamNameToSession = new HashMap<String, ScheduleMulticastSession>();
+	private List<ScheduleMulticastSession> sessionToStart = new ArrayList<ScheduleMulticastSession>();
+	private Set<IMediaStream> localStreamSet = new HashSet<IMediaStream>();
+	private Object lock = new Object();
 
 	public void onAppStart(IApplicationInstance appInstance) {
 		String fullname = appInstance.getApplication().getName() + "/" + appInstance.getName();
-		logger.info("ScheduleMulticast.onAppStart: " + fullname);
+		logger.info("onAppStart: " + fullname);
 		this.appInstance = appInstance;
 		init();
+		// TODO new Thread to runMulticast
 	}
 	
 	private void init() {
@@ -51,78 +56,108 @@ public class ScheduleMulticast extends ModuleBase {
 			if (!file.exists())
 				file.mkdirs();
 		} catch(Exception e) {
-			logger.error("ScheduleMulticast.init["+appInstance.getContextStr()+"]: "+e.toString());
+			logger.error("init["+appInstance.getContextStr()+"]: "+e.toString());
 		}
-//		rtpDestination = new RTPDestination();
-//		rtpDestination.setHost("224.1.1.1");
-//		rtpDestination.setAudioPort(25552);
-//		rtpDestination.setVideoPort(25550);
-//		rtpDestination.setRTPWrapped(false);
-//		rtpPushPublishSession = RTPUtils.startRTPPull(appInstance, "stream1", rtpDestination);
-//		sdpData = rtpPushPublishSession.getSDPData();
-//		sdpData = RTPUtils.updateSDPDestination(rtpDestination, sdpData);
-//	
+	
 	}
 
 	public void onAppStop(IApplicationInstance appInstance) {
 		String fullname = appInstance.getApplication().getName() + "/" + appInstance.getName();
-		logger.info("ScheduleMulticast.onAppStop: " + fullname);
-//		RTPUtils.stopRTPPull(rtpPushPublishSession);
+		logger.info("onAppStop: " + fullname);
+		// TODO stop Thread
 	}
 
 	public void onStreamCreate(IMediaStream stream) {
-		logger.info("ScheduleMulticast.onStreamCreate: " + stream.getSrc());
+		logger.info("onStreamCreate: " + stream.getSrc());
 		stream.addClientListener(new ScheduleStreamActionNotify(this));
 	}
 
 	public void onStreamDestroy(IMediaStream stream) {
-		logger.info("ScheduleMulticast.onStreamDestroy: " + stream.getSrc());
+		logger.info("onStreamDestroy: " + stream.getSrc());
+		ScheduleMulticastSession oldSession = streamToSession.get(stream);
+		if (oldSession != null) {
+			stopMulticastStream(stream, oldSession.getStreamName());
+		}
 	}
 
 	public void onRTPSessionCreate(RTPSession rtpSession) {
-		logger.info("ScheduleMulticast.onRTPSessionCreate: " + rtpSession.getSessionId());
+		logger.info("onRTPSessionCreate: " + rtpSession.getSessionId());
 		rtpSession.addActionListener(new ScheduleRTSPActionNotify(this));
 	}
 
 	public void onRTPSessionDestroy(RTPSession rtpSession) {
-		logger.info("ScheduleMulticast.onRTPSessionDestroy: " + rtpSession.getSessionId());
+		logger.info("onRTPSessionDestroy: " + rtpSession.getSessionId());
 	}
 	
 	public void onDescribe(RTPSession rtspSession, RTSPRequestMessage req, RTSPResponseMessages resp) {
-		// TODO Auto-generated method stub
+		logger.info("onDescribe: " + rtspSession.getSessionId());
 		String queryStr = rtspSession.getQueryStr();
-//		System.out.println("queryStr: "+queryStr);
 		logger.info("queryStr: "+queryStr);
 
 		if (queryStr == null) {
-			logger.warn("queryStr is NULL");
 			return ;
 		}
 		
-		Map<String, String> queryMap = HTTPUtils.splitQueryStr(queryStr);
-		if (!queryMap.containsKey(QUERYSTRING_MULTICASTPLAY)) {
-			logger.warn("NOT multicast play");
-			return ;
-		}
-
 		RTPStream rtpStream = rtspSession.getRTSPStream();
 		if (rtpStream == null) {
-			logger.warn("rtpStream is NULL");
 			return ;
 		}
-//		logger.info("host: " + rtpStream.getOutHost());
-//		logger.info("StreamName: " + rtpStream.getStreamName());
-//		logger.info("vudio: " + rtpStream.getVideoTrack().getRTCPOutPortNum());
-//		rtpStream.setRTPDestination(rtpDestination);
+		
+		// If not multicastplay, return.
+		Map<String, String> queryMap = HTTPUtils.splitQueryStr(queryStr);
+		if (!queryMap.containsKey(QUERYSTRING_MULTICASTPLAY)) {
+			return ;
+		}
+		
+		// If multicastplay, change session to multicastIP and multicastPort.
+		// TODO
 		
 	}
 	
 	public void onPublish(IMediaStream stream, String streamName, boolean isRecord, boolean isAppend) {
-		// TODO
+		logger.info("onPublish: streamName=" + streamName);
+		if (!localStreamSet.contains(stream)) {
+			startMulticastStream(stream, streamName);
+		}
 	}
 	
 	public void onUnPublish(IMediaStream stream, String streamName, boolean isRecord, boolean isAppend) {
-		// TODO
+		logger.info("onUnPublish: streamName=" + streamName);
+		stopMulticastStream(stream, streamName);
+	}
+	
+	private void startMulticastStream(IMediaStream stream, String streamName) {
+		synchronized (lock) {
+			ScheduleMulticastSession oldSession = streamNameToSession.get(streamName);
+			if (oldSession != null) {
+				this.closeMulticastSession(oldSession);
+			}
+		}
+		
+		localStreamSet.add(stream);
+		ScheduleMulticastSession newSession = new ScheduleMulticastSession(streamName);
+		newSession.setStream(stream);
+		// TODO getDestination
+		streamToSession.put(stream, newSession);
+		streamNameToSession.put(streamName, newSession);
+		sessionToStart.add(newSession);
+	}
+	
+	private void stopMulticastStream(IMediaStream stream, String streamName) {
+		synchronized (lock) {
+			ScheduleMulticastSession oldSession = streamNameToSession.get(streamName);
+			if (oldSession != null) {
+				this.closeMulticastSession(oldSession);
+			}
+			localStreamSet.remove(stream);
+		}
 	}
 
+	public void runMulticast() {
+		// TODO
+	}
+	
+	public void closeMulticastSession(ScheduleMulticastSession multicastSession) {
+		// TODO
+	}
 }
