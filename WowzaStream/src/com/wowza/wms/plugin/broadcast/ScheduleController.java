@@ -40,6 +40,9 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 		// TODO Auto-generated method stub
 		log.info("onHTTPRequest");
 		
+		if (!this.doHTTPAuthentication(vhost, req, resp))
+			return ;
+		
 		String commit = req.getParameter("commit");
 		String channelId = req.getParameter("channelid");
 		JSONObject json = new JSONObject();
