@@ -46,12 +46,14 @@ public class ScheduleMulticast extends ModuleBase {
 	public void onAppStart(IApplicationInstance appInstance) {
 		String fullname = appInstance.getApplication().getName() + "/" + appInstance.getName();
 		logger.info("onAppStart: " + fullname);
+		
+		// Multicast init
 		this.appInstance = appInstance;
-		init();
+		this.init();
 		
 		// Mapper init
-		mapper = new ScheduleMulticastMapper();
-		mapper.init(appInstance);
+		mapper = new ScheduleMulticastMapper(appInstance);
+		mapper.init();
 		
 		// New Thread to run Multicast
 		t = new ScheduleMulticastThread(this);
@@ -239,8 +241,7 @@ public class ScheduleMulticast extends ModuleBase {
 			streamToSession.remove(multicastSession.getStream());
 			streamNameToSession.remove(multicastSession.getStreamName());
 			sessionToStart.remove(multicastSession);
-		
-		
+			
 			// Recycle Destinations
 			mapper.recycleDestiantions(multicastSession);
 		

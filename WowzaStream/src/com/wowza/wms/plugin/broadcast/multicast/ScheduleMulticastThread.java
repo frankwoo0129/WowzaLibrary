@@ -19,6 +19,9 @@ public class ScheduleMulticastThread extends Thread {
 		while (isContinue) {
 			this.multicast.runMulticast();
 			
+			if (!isContinue)
+				break ;
+			
 			try {
 				sleep(interval);
 			} catch (InterruptedException e) {

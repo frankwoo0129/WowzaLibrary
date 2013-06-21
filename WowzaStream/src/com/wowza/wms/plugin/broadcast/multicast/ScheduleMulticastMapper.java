@@ -11,8 +11,11 @@ public class ScheduleMulticastMapper {
 	private IApplicationInstance appInstance = null;
 	private String multicastMapPath = "${com.wowza.wms.context.VHostConfigHome}/conf/multicastmap.txt";
 	
-	public void init(IApplicationInstance appInstance) {
+	public ScheduleMulticastMapper(IApplicationInstance appInstance) {
 		this.appInstance = appInstance;
+	}
+	
+	public void init() {
 		WMSProperties props = this.appInstance.getProperties();
 		this.multicastMapPath = props.getPropertyStr("multicastPublishMulticastMapPath", multicastMapPath);
 		

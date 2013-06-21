@@ -192,66 +192,29 @@ public class ModuleMulticastPublish extends ModuleBase
 //		}
 //	}
 	
-//	public void startStream(IMediaStream stream, String streamName)
-//	{
-//		synchronized(lock)
-//		{
-//			MulticastPublishSession oldSession = streamNameToSession.get(streamName);
-//			if (oldSession != null)
-//				closePublishSession(oldSession);
-//			
-//			localStreamSet.add(stream);
-//			
-//			MulticastPublishSession publishSession = new MulticastPublishSession();
-//			publishSession.setStream(stream);
-//			publishSession.setStreamName(streamName);
-//			addressMapper.getDestinations(publishSession);
-//			
-//			sessionsToStart.add(publishSession);
-//			streamNameToSession.put(streamName, publishSession);
-//			streamToSession.put(stream, publishSession);
-//		}
-//	}
-	
-//	public void stopStream(IMediaStream stream, String streamName)
-//	{
-//		synchronized(lock)
-//		{
-//			MulticastPublishSession oldSession = streamNameToSession.get(streamName);
-//			if (oldSession != null)
-//				closePublishSession(oldSession);
-//			
-//			localStreamSet.remove(stream);
-//		}
-//	}
-
-	public void onStreamPublish(IMediaStream stream, String streamName, boolean isRecord, boolean isAppend)
+	public void startStream(IMediaStream stream, String streamName)
 	{
-		getLogger().info("ModuleMulticastPublish.onStreamPublish["+appInstance.getContextStr()+"]: "+streamName);
-		if (!localStreamSet.contains(stream)) {
-			synchronized(lock)
-			{
-				MulticastPublishSession oldSession = streamNameToSession.get(streamName);
-				if (oldSession != null)
-					closePublishSession(oldSession);
-				
-				localStreamSet.add(stream);
-				
-				MulticastPublishSession publishSession = new MulticastPublishSession();
-				publishSession.setStream(stream);
-				publishSession.setStreamName(streamName);
-				addressMapper.getDestinations(publishSession);
-				
-				sessionsToStart.add(publishSession);
-				streamNameToSession.put(streamName, publishSession);
-				streamToSession.put(stream, publishSession);
-			}
+		synchronized(lock)
+		{
+			MulticastPublishSession oldSession = streamNameToSession.get(streamName);
+			if (oldSession != null)
+				closePublishSession(oldSession);
+			
+			localStreamSet.add(stream);
+			
+			MulticastPublishSession publishSession = new MulticastPublishSession();
+			publishSession.setStream(stream);
+			publishSession.setStreamName(streamName);
+			addressMapper.getDestinations(publishSession);
+			
+			sessionsToStart.add(publishSession);
+			streamNameToSession.put(streamName, publishSession);
+			streamToSession.put(stream, publishSession);
 		}
 	}
 	
-	public void onStreamUnPublish(IMediaStream stream, String streamName, boolean isRecord, boolean isAppend)
+	public void stopStream(IMediaStream stream, String streamName)
 	{
-		getLogger().info("ModuleMulticastPublish.onStreamUnPublish["+appInstance.getContextStr()+"]: "+streamName);
 		synchronized(lock)
 		{
 			MulticastPublishSession oldSession = streamNameToSession.get(streamName);
@@ -260,6 +223,20 @@ public class ModuleMulticastPublish extends ModuleBase
 			
 			localStreamSet.remove(stream);
 		}
+	}
+
+	public void onStreamPublish(IMediaStream stream, String streamName, boolean isRecord, boolean isAppend)
+	{
+		getLogger().info("ModuleMulticastPublish.onStreamPublish["+appInstance.getContextStr()+"]: "+streamName);
+		if (!localStreamSet.contains(stream)) {
+			startStream(stream, streamName);
+		}
+	}
+	
+	public void onStreamUnPublish(IMediaStream stream, String streamName, boolean isRecord, boolean isAppend)
+	{
+		getLogger().info("ModuleMulticastPublish.onStreamUnPublish["+appInstance.getContextStr()+"]: "+streamName);
+		stopStream(stream, streamName);
 	}
 	
 	public void onRTPSessionCreate(RTPSession rtpSession)
