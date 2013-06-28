@@ -23,10 +23,27 @@ public class ScheduleEPG {
 		try {
 			this.epgLink = (String) obj.get("epg");
 			this.channelId = ((Long) obj.get("channelid")).intValue();
-			this.multicastGroup = (String) obj.get("MulticastGroup");
-			this.multicastPort = ((Long) obj.get("MulticastPort")).intValue();
-			this.channelPort = ((Long) obj.get("ChannelPort")).intValue();
-			this.ttl = ((Long) obj.get("ttl")).intValue();
+			
+			if (obj.get("MulticastGroup") != null)
+				this.multicastGroup = (String) obj.get("MulticastGroup");
+			else
+				this.multicastGroup = null;
+			
+			if (obj.get("MulticastPort") != null)
+				this.multicastPort = ((Long) obj.get("MulticastPort")).intValue();
+			else
+				this.multicastPort = 0;
+			
+			if (obj.get("ChannelPort") != null)
+				this.channelPort = ((Long) obj.get("ChannelPort")).intValue();
+			else
+				this.channelPort = 0;
+			
+			if (obj.get("ttl") != null)
+				this.ttl = ((Long) obj.get("ttl")).intValue();
+			else
+				this.ttl = 0;
+			
 			this.list = new LinkedList<ScheduleProgram>();
 		} catch (Exception e) {
 			throw new RuntimeException("JSON Error");

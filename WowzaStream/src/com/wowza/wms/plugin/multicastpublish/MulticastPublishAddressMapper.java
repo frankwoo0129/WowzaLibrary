@@ -605,6 +605,10 @@ public class MulticastPublishAddressMapper
 			while (iter.hasNext()) {
 				ScheduleEPG epg = epglist.getScheduleEPG(iter.next());
 				String streamName = "stream" + epg.getChannelId();
+				
+				if (epg.getMulticastGroup() == null || epg.getMultivastPort() == 0)
+					continue;
+				
 				StringBuffer alias = new StringBuffer();
 				alias.append('{');
 				alias.append("name:").append(streamName).append(',');
