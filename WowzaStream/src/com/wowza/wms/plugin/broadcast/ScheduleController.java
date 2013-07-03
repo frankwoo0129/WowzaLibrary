@@ -46,10 +46,10 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 		String commit = req.getParameter("commit");
 		String channelId = req.getParameter("channelid");
 		JSONObject json = new JSONObject();
-		Runnable r = null;
+		TimerTask task = null;
 		if ("start".equals(commit)) {
 			if (channelId == null) {
-				r = new Runnable(){
+				task = new TimerTask(){
 					public void run() {
 						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
 						loadSchedule(app.getAppInstance("_definst_"));
@@ -58,9 +58,9 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 				json.put("msg", "starting all schedule");
 			} else {
 				final int id = Integer.valueOf(channelId);
-				r = new Runnable(){
+				task = new TimerTask(){
 					public void run() {
-						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
+						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL, id);
 						loadSchedule(app.getAppInstance("_definst_"), id);
 					}
 				};
@@ -73,13 +73,13 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 				json.put("msg", "stopping all schedule");
 			} else {
 				int id = Integer.valueOf(channelId);
-				closeScheduleItem(id);
+				unloadSchedule(id);
 				json.put("msg", "stopping schedule: channel=" + id);
 				json.put("channelid", id);
 			}
 		} else if ("reload".equals(commit)) {
 			if (channelId == null) {
-				r = new Runnable(){
+				task = new TimerTask(){
 					public void run() {
 						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
 						reloadSchedule();
@@ -88,9 +88,9 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 				json.put("msg", "Reloading all schedule");
 			} else {
 				final int id = Integer.valueOf(channelId);
-				r = new Runnable(){
+				task = new TimerTask(){
 					public void run() {
-						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
+						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL, id);
 						reloadSchedule(id);
 					}
 				};
@@ -101,9 +101,10 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 			json.put("msg", "No commit");
 		}
 		
-		if (r != null) {
-			Thread t = new Thread(r);
-			t.start();
+		if (task != null) {
+			if (timer != null)
+				timer = new Timer();
+			timer.schedule(task, 0);
 		}
 		
 		try	{
@@ -150,85 +151,7 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 			log.error("ScheduleController: Failed to get ApplicationInstance can not run.");
 			return ;
 		}
-		
-		
-//		File cacheDir = new File(app.getAppInstance("_definst_").getStreamStorageDir(), ScheduleCache.CACHE_DIRECTORY);
-//		if (!cacheDir.exists())
-//			cacheDir.mkdir();
-//		File[] fs = cacheDir.listFiles();
-//		for (File f : fs) {
-//			if(f.delete())
-//				log.info("Delete file successfully: " + f.getName());
-//		}
-//				
-//		Connection connection = null; 
-//		try {
-//			Class.forName("org.sqlite.JDBC");
-//			connection = DriverManager.getConnection("jdbc:sqlite:" + Paths.get(app.getAppInstance("_definst_").getStreamStorageDir(), ScheduleCache.CACHE_DIRECTORY).resolve("content.db").toFile());
-//			Statement statement = connection.createStatement(); 
-//			statement.setQueryTimeout(30);
-//			statement.executeUpdate("drop table if exists test");
-//			statement.executeUpdate("create table test (channelid integer, name string, starttime timestamp)");
-//			
-//			Calendar c = Calendar.getInstance();
-//			PreparedStatement pstatement = null;
-//			
-//			c.set(2000, 0, 1, 0, 0, 0);
-//			pstatement = connection.prepareStatement("insert into test values(1, 'aaa', ?)");
-//			pstatement.setTimestamp(1, new Timestamp(c.getTimeInMillis()));
-//			pstatement.executeUpdate();
-//			
-//			c.set(2000, 0, 1, 1, 0, 0);
-//			pstatement = connection.prepareStatement("insert into test values(1, 'bbb', ?)");
-//			pstatement.setTimestamp(1, new Timestamp(c.getTimeInMillis()));
-//			pstatement.executeUpdate();
-//			
-//			c.set(2000, 0, 1, 2, 0, 0);
-//			pstatement = connection.prepareStatement("insert into test values(1, 'aaa', ?)");
-//			pstatement.setTimestamp(1, new Timestamp(c.getTimeInMillis()));
-//			pstatement.executeUpdate();
-//			
-//			c.set(2000, 0, 1, 3, 0, 0);
-//			pstatement = connection.prepareStatement("insert into test values(1, 'ccc', ?)");
-//			pstatement.setTimestamp(1, new Timestamp(c.getTimeInMillis()));
-//			pstatement.executeUpdate();
-//			
-//			c.set(2000, 0, 1, 2, 0, 0);
-//			pstatement = connection.prepareStatement("select * from test where name not in (select name from test where starttime >= ?)");
-//			pstatement.setTimestamp(1, new Timestamp(c.getTimeInMillis()));
-//			ResultSet rs = pstatement.executeQuery();
-//			
-//			c.set(2000, 0, 1, 2, 0, 0);
-//			pstatement = connection.prepareStatement("delete from test where name not in (select name from test where starttime >= ?)");
-//			pstatement.setTimestamp(1, new Timestamp(c.getTimeInMillis()));
-//			pstatement.executeUpdate();
-//			
-//			rs = statement.executeQuery("select * from test");
-//			while(rs.next()) {
-//				log.info("channelid = " + rs.getInt("channelid"));
-//				log.info("name = " + rs.getString("name"));
-//				log.info("starttime = " + rs.getTimestamp("starttime"));
-//		    }
-//			log.info("GOOD");
-//		} catch (SQLException e) {
-//			e.printStackTrace();
-//			log.warn("ERROR:" + e.getMessage());
-//		} catch (ClassNotFoundException e) {
-//			e.printStackTrace();
-//			log.warn("ERROR:" + e.getMessage());
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//			log.warn("ERROR:" + e.getMessage());
-//		} finally {
-//			try {
-//				if (connection != null)
-//					connection.close();
-//			} catch (SQLException e) {
-//				e.printStackTrace();
-//			}
-//		}
-		
-		
+
 		// Set Cache init		
 		onCache = appInstance.getProperties().getPropertyBoolean("ScheduleOnCache", onCache);
 		
@@ -245,25 +168,29 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 				
 		// Set Cache Task
 		if (onCache) {
-			if (timer == null)
-				timer = new Timer();
-			TimerTask doCacheTask = new TimerTask(){
-				@Override
-				public void run() {
-					cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
-				}
-			};
-			timer.scheduleAtFixedRate(doCacheTask, 0, ScheduleCache.CACHE_TIME_TEST);
-			
-			TimerTask doCleanCacheTask = new TimerTask() {
-				@Override
-				public void run() {
-					cache.doCleanCache();
-				}
-			};
-			timer.scheduleAtFixedRate(doCleanCacheTask, 0, ScheduleCache.CACHE_TIME_CLEAN);
+			doCache();
 		}
 		
+	}
+	
+	private void doCache() {
+		if (timer == null)
+			timer = new Timer();
+		TimerTask doCacheTask = new TimerTask(){
+			@Override
+			public void run() {
+				cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
+			}
+		};
+		timer.scheduleAtFixedRate(doCacheTask, 0, ScheduleCache.CACHE_TIME_TEST);
+		
+		TimerTask doCleanCacheTask = new TimerTask() {
+			@Override
+			public void run() {
+				cache.doCleanCache();
+			}
+		};
+		timer.scheduleAtFixedRate(doCleanCacheTask, 0, ScheduleCache.CACHE_TIME_CLEAN);
 	}
 
 	@Override
@@ -286,27 +213,7 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 	public void loadSchedule(IApplicationInstance appInstance) {
 		log.info("ScheduleController.loadSchedule");
 		String ret = null;
-//		try {
-//			JSONArray epg = ScheduleUtils.getJSONArray(link);
-//			if (epg == null) {
-//				ret = "ScheduleController.loadSchedule: Connection Failed to epg Server";
-//				log.error(ret);
-//				return ;
-//			}
-//			if (epg.size() == 0) {
-//				ret = "ScheduleController.loadSchedule: No channel to publish";
-//				log.warn(ret);
-//				return ;
-//			}
-//			for (Object obj : epg) {
-//				int channelId = ((Long) ((JSONObject) obj).get("channelid")).intValue();
-//				openScheduleItem(appInstance, channelId, obj);
-//			}
-//		} catch (Exception e) {
-//			ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
-//			e.printStackTrace();
-//			log.error(ret);
-//		}
+
 		try {
 			epglist.init();
 		} catch (Exception e) {
@@ -322,7 +229,6 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 				ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
 				e.printStackTrace();
 				log.error(ret);
-				continue;
 			}
 		}
 	}
@@ -330,30 +236,6 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 	public void loadSchedule(IApplicationInstance appInstance, int channelId) {
 		log.info("ScheduleController.loadSchedule, channelId=" + channelId);
 		String ret = null;		
-//		try {
-//			JSONArray epg = ScheduleUtils.getJSONArray(link);
-//			if (epg == null) {
-//				ret = "ScheduleController.loadSchedule: Connection Failed to epg Server";
-//				log.error(ret);
-//				return ;
-//			}
-//			if (epg.size() == 0) {
-//				ret = "ScheduleController.loadSchedule: No channel to publish";
-//				log.warn(ret);
-//				return ;
-//			}
-//			for (Object obj : epg) {
-//				if(channelId == ((Long) ((JSONObject) obj).get("channelid")).intValue()) {
-//					openScheduleItem(appInstance, channelId, obj);
-//					break;
-//				} else
-//					continue;
-//			}
-//		} catch (Exception e) {
-//			ret = "ScheduleController.loadSchedule: Error from loadSchedule is '" + e.getClass().getName() + "'";
-//			e.printStackTrace();
-//			log.error(ret);
-//		}
 		
 		try {
 			epglist.init();
@@ -369,83 +251,53 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 			e.printStackTrace();
 			log.error(ret);
 		}
-		
 	}
-	
 	
 	public void unloadSchedule() {
 		log.info("ScheduleController.unloadSchedule");
-		if (streamMap != null) {
-			for (Map.Entry<Integer, ScheduleItem> entry : streamMap.entrySet()) {
-				try {
-					ScheduleItem item = entry.getValue();
-					if (item != null)
-						item.close();
-					item = null;
-					log.info("Unload Schedule Stream: " + entry.getKey());
-				} catch(Exception e) {
-					log.error("ScheduleController.unloadSchedule: Error from unloadSchedule Stream" + entry.getValue().getChannelId() + " is '" + e.getClass().getName() + "'");
-				}
-			}
-			streamMap.clear();
+		for (Map.Entry<Integer, ScheduleItem> entry : streamMap.entrySet()) {
+			closeScheduleItem(entry.getKey());
 		}
+		streamMap.clear();
+	}
+	
+	public void unloadSchedule(int channelId) {
+		log.info("ScheduleController.unloadSchedule, channelId=" + channelId);
+		closeScheduleItem(channelId);
+		streamMap.remove(channelId);
 	}
 	
 	public void reloadSchedule() {
 		log.info("ScheduleController.reloadSchedule");
 		for (Map.Entry<Integer, ScheduleItem> entry : streamMap.entrySet()) {
-			try {
-				ScheduleItem item = entry.getValue();
-				if (item != null) {
-					item.loadScheduleItem(null);
-					log.info("Reload Schedule Stream: " + entry.getKey());
-				}
-			} catch(Exception e) {
-				log.error("ScheduleController.reloadSchedule: Error from reloadSchedule Stream" + entry.getValue().getChannelId() + " is '" + e.getClass().getName() + "'");
-			}
+			reloadSchedule(entry.getKey());
 		}
 	}
 	
 	public void reloadSchedule(int channelId) {
+		log.info("ScheduleController.reloadSchedule, channelId=" + channelId);
 		try {
 			ScheduleItem item = streamMap.get(channelId);
 			if (item != null) {
 				item.loadScheduleItem(null);
-				log.info("Reload Schedule Stream: " + channelId);
 			}
 		} catch(Exception e) {
 			log.error("ScheduleController.reloadSchedule: Error from reloadSchedule Stream" + channelId + " is '" + e.getClass().getName() + "'");
 		}
 	}
 	
-//	private void openScheduleItem(IApplicationInstance appInstance, int channelId, Object obj) {
-//		String ret = null;
-//		log.debug("ScheduleController.openScheduleItem: channelId=" + channelId);
-//		closeScheduleItem(channelId);
-//		String epgListLink = (String) ((JSONObject) obj).get("epg");
-//		if (epgListLink == null) {
-//			ret = "ScheduleController: No epg Server link";
-//			log.warn(ret);
-//			return ;
-//		}
-//		ScheduleItem newItem = new ScheduleItem(appInstance, null);
-//		streamMap.put(channelId, newItem);
-//		newItem.open();
-//		log.info("ScheduleController.openScheduleItem: channelId=" + channelId);
-//	}
-	
 	private void openScheduleItem(IApplicationInstance appInstance, int channelId) {
 		log.debug("ScheduleController.openScheduleItem: channelId=" + channelId);
 		closeScheduleItem(channelId);
 		ScheduleEPG epg = epglist.getScheduleEPG(channelId);
 		if (epg == null) {
-			log.info("ScheduleController.openScheduleItem: No scheduleItem, channelid=" + channelId);
-			return ;
+			log.info("ScheduleController.openScheduleItem: No EPG in EPGList, channelid=" + channelId);
+		} else {
+			ScheduleItem newItem = new ScheduleItem(appInstance, epg);
+			streamMap.put(channelId, newItem);
+			newItem.open();
+			log.info("ScheduleController.openScheduleItem: channelId=" + channelId);
 		}
-		ScheduleItem newItem = new ScheduleItem(appInstance, epg);
-		streamMap.put(channelId, newItem);
-		newItem.open();
-		log.info("ScheduleController.openScheduleItem: channelId=" + channelId);
 	}
 	
 	private void closeScheduleItem(int channelId) {
@@ -458,7 +310,6 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 		} else {
 			log.info("ScheduleController.closeScheduleItem: No scheduleItem, channelid=" + channelId);
 		}
-		streamMap.remove(channelId);
 	}
 	
 }

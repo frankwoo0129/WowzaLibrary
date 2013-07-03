@@ -41,7 +41,6 @@ public class ScheduleCache {
 	private IApplicationInstance appInstance;
 	private File cacheDir;
 	private Object lock =  new Object();
-	private boolean isBusy = false;
 		
 	static {
 		try {
@@ -88,11 +87,8 @@ public class ScheduleCache {
 		}
 	}
 	
-	public void doCache(long cachetimemilis) {
-		if (isBusy)
-			return ;
-		
-		Date cachetime = new Date(System.currentTimeMillis() + cachetimemilis);
+	public void doCache(long cachetimemillis) {
+		Date cachetime = new Date(System.currentTimeMillis() + cachetimemillis);
 		ScheduleEPGList epglist= null;
 		try {
 			epglist = new ScheduleEPGList(epglink);
@@ -102,63 +98,101 @@ public class ScheduleCache {
 			return ;
 		}
 		
-		try {
-			isBusy = true;
-			Iterator<Integer> iter_epglist = epglist.getChannelIdSet().iterator();
-			while (iter_epglist.hasNext()) {
-				ScheduleEPG epg = epglist.getScheduleEPG(iter_epglist.next());
-				int channelId = epg.getChannelId();
-				try {
-					epg.update(cachetime);
-				} catch (Exception e) {
-					log.error(e.getMessage());
-					continue;
-				}
-			
-				ScheduleProgram program = null;
-				COPY_FILE:
-					while ((program = epg.getProgram()) != null) {
-						Path copyMeFile = Paths.get(appInstance.getStreamStorageDir() + program.getUri());
-						Path copyToFile = Paths.get(appInstance.getStreamStorageDir(), CACHE_DIRECTORY).resolve(program.getFileName());
-				
-						while (true) {
-							if (copyToFile.toFile().exists())
-								break;
-				
-							try {
-								Files.copy(copyMeFile, copyToFile, new CopyOption[]{StandardCopyOption.REPLACE_EXISTING});
-								log.info("The file was successfully copied!");
-								break ;
-							} catch (IOException e) {
-								log.error("The file was copyed unsuccessfully: " + e.getMessage());
-								continue COPY_FILE;
-							}
-						}
-						synchronized(lock) {
-							if (!addProgram(channelId, program.getUri(), program.getFileName(), program.getStartTimeStamp() , program.getEndTimeStamp()))
-								log.error("Add Program to DB failed");
-						}
-					}	
+		Iterator<Integer> iter_epglist = epglist.getChannelIdSet().iterator();
+		while (iter_epglist.hasNext()) {
+			ScheduleEPG epg = epglist.getScheduleEPG(iter_epglist.next());
+			int channelId = epg.getChannelId();
+			try {
+				epg.update(cachetime);
+			} catch (Exception e) {
+				log.error(e.getMessage());
+				continue;
 			}
-		} finally {
-			isBusy = false;
+		
+			ScheduleProgram program = null;
+			COPY_FILE:
+				while ((program = epg.getProgram()) != null) {
+					Path copyMeFile = Paths.get(appInstance.getStreamStorageDir() + program.getUri());
+					Path copyToFile = Paths.get(appInstance.getStreamStorageDir(), CACHE_DIRECTORY).resolve(program.getFileName());
+			
+					while (true) {
+						if (copyToFile.toFile().exists())
+							break;
+			
+						try {
+							Files.copy(copyMeFile, copyToFile, new CopyOption[]{StandardCopyOption.REPLACE_EXISTING});
+							log.info("The file was successfully copied!");
+							break ;
+						} catch (IOException e) {
+							log.error("The file was copyed unsuccessfully: " + e.getMessage());
+							continue COPY_FILE;
+						}
+					}
+					synchronized(lock) {
+						if (!addProgram(channelId, program.getUri(), program.getFileName(), program.getStartTimeStamp() , program.getEndTimeStamp()))
+							log.error("Add Program to DB failed");
+					}
+				}	
+		}
+	}
+	
+	public void doCache(long cachetimemillis, int channelId) {
+		Date cachetime = new Date(System.currentTimeMillis() + cachetimemillis);
+		ScheduleEPGList epglist= null;
+		try {
+			epglist = new ScheduleEPGList(epglink);
+			epglist.init();
+		} catch (Exception e) {
+			log.error(e.getMessage());
+			return ;
 		}
 		
+		ScheduleEPG epg = epglist.getScheduleEPG(channelId);
+		if (epg == null)
+			return ;
+		
+		try {
+			epg.update(cachetime);
+		} catch (Exception e) {
+			log.error(e.getMessage());
+			return ;
+		}
+	
+		ScheduleProgram program = null;
+		COPY_FILE:
+			while ((program = epg.getProgram()) != null) {
+				Path copyMeFile = Paths.get(appInstance.getStreamStorageDir() + program.getUri());
+				Path copyToFile = Paths.get(appInstance.getStreamStorageDir(), CACHE_DIRECTORY).resolve(program.getFileName());
+		
+				while (true) {
+					if (copyToFile.toFile().exists())
+						break;
+		
+					try {
+						Files.copy(copyMeFile, copyToFile, new CopyOption[]{StandardCopyOption.REPLACE_EXISTING});
+						log.info("The file was successfully copied!");
+						break ;
+					} catch (IOException e) {
+						log.error("The file was copyed unsuccessfully: " + e.getMessage());
+						continue COPY_FILE;
+					}
+				}
+				synchronized(lock) {
+					if (!addProgram(channelId, program.getUri(), program.getFileName(), program.getStartTimeStamp() , program.getEndTimeStamp()))
+						log.error("Add Program to DB failed");
+				}
+			}	
 	}
 	
 	public void doCleanAllCache() {
-		if (isBusy)
-			return ;
-		
 		File[] fs = cacheDir.listFiles();
 		for (File f : fs) {
 			f.delete();
 		}
 		
 		synchronized(lock) {
-			Connection connection = null;
+			Connection connection = getConnection();
 			try {
-				isBusy = true;
 				connection = getConnection();
 		
 				if (connection == null) {
@@ -178,19 +212,14 @@ public class ScheduleCache {
 				} catch (SQLException e) {
 					log.warn("SQLite Connection close ERROR");
 				}
-				isBusy = false;
 			}
 		}
 	}
 	
 	public void doCleanCache() {
-		if (isBusy)
-			return ;
-		
 		synchronized(lock) {
 			Connection connection = null;
 			try {
-				isBusy = true;
 				connection = getConnection();
 		
 				if (connection == null) {
@@ -218,7 +247,6 @@ public class ScheduleCache {
 				} catch (SQLException e) {
 					log.warn("SQLite Connection close ERROR");
 				}
-				isBusy = false;
 			}
 		}
 	}
@@ -237,7 +265,6 @@ public class ScheduleCache {
 		synchronized(lock) {
 			Connection connection = null;
 			try {
-				isBusy = true;
 				connection = getConnection();
 		
 				if (connection == null) {
@@ -264,7 +291,6 @@ public class ScheduleCache {
 				} catch (SQLException e) {
 					log.warn("SQLite Connection close ERROR");
 				}
-				isBusy = false;
 			}
 		}
 	}
