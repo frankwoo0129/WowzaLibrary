@@ -46,14 +46,24 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 		String commit = req.getParameter("commit");
 		String channelId = req.getParameter("channelid");
 		JSONObject json = new JSONObject();
-		
+		Runnable r = null;
 		if ("start".equals(commit)) {
 			if (channelId == null) {
-				loadSchedule(app.getAppInstance("_definst_"));
+				r = new Runnable(){
+					public void run() {
+						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
+						loadSchedule(app.getAppInstance("_definst_"));
+					}
+				};
 				json.put("msg", "starting all schedule");
 			} else {
-				int id = Integer.valueOf(channelId);
-				loadSchedule(app.getAppInstance("_definst_"), id);
+				final int id = Integer.valueOf(channelId);
+				r = new Runnable(){
+					public void run() {
+						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
+						loadSchedule(app.getAppInstance("_definst_"), id);
+					}
+				};
 				json.put("msg", "starting schedule: channel=" + id);
 				json.put("channelid", id);
 			}
@@ -69,17 +79,33 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 			}
 		} else if ("reload".equals(commit)) {
 			if (channelId == null) {
-				reloadSchedule();
+				r = new Runnable(){
+					public void run() {
+						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
+						reloadSchedule();
+					}
+				};
 				json.put("msg", "Reloading all schedule");
 			} else {
-				int id = Integer.valueOf(channelId);
-				reloadSchedule(id);
+				final int id = Integer.valueOf(channelId);
+				r = new Runnable(){
+					public void run() {
+						cache.doCache(ScheduleCache.CACHE_TIME_INTERVAL);
+						reloadSchedule(id);
+					}
+				};
 				json.put("msg", "Reloading schedule: channel=" + id);
 				json.put("channelid", id);
 			}
 		} else {
 			json.put("msg", "No commit");
 		}
+		
+		if (r != null) {
+			Thread t = new Thread(r);
+			t.start();
+		}
+		
 		try	{
 			resp.setHeader("Content-Type", "text/html");
 			OutputStream out = resp.getOutputStream();
