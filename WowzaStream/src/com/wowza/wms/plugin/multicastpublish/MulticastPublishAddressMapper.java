@@ -635,9 +635,7 @@ public class MulticastPublishAddressMapper
 			synchronized(lock) {
 				streamNameMap.clear();
 				streamNameMap.putAll(newMap);
-				
 				WMSLoggerFactory.getLogger(MulticastPublishAddressMapper.class).info("MulticastPublishAddressMapper.loadMapFile: entries:"+ streamNameMap.size());
-				
 			}
 		}
 	}

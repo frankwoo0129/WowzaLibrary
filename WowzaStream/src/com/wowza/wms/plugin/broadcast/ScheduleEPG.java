@@ -55,7 +55,8 @@ public class ScheduleEPG {
 	}
 	
 	public Date getSystemTime() {
-		return ScheduleProgram.getTimeStamp(this.systemTime);
+		Date date = ScheduleProgram.getTimeStamp(this.systemTime);
+		return (date != null) ? date : new Date();
 	}
 	
 	public String getMulticastGroup() {
