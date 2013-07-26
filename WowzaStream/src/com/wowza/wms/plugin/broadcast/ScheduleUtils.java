@@ -13,6 +13,7 @@ import com.wowza.wms.logging.WMSLoggerFactory;
 public class ScheduleUtils {
 	public static String getObject(String link) {
 		try {
+			WMSLoggerFactory.getLogger(ScheduleUtils.class).debug("getObject: link=" + link);
 			URL url = new URL(link);
 			InputStream in = url.openStream();
 			byte[] b = new byte[1024];
@@ -34,6 +35,7 @@ public class ScheduleUtils {
 		try {
 			return (JSONArray) new JSONParser().parse(getObject(link));
 		} catch (Exception e) {
+			WMSLoggerFactory.getLogger(ScheduleUtils.class).error("getJSONArray: Error from Exception is '" + e.getMessage() + "'");
 			return null;
 		}
 	}
@@ -42,6 +44,7 @@ public class ScheduleUtils {
 		try {
 			return (JSONObject) new JSONParser().parse(getObject(link));
 		} catch (Exception e) {
+			WMSLoggerFactory.getLogger(ScheduleUtils.class).error("getJSONObject: Error from Exception is '" + e.getMessage() + "'");
 			return null;
 		}
 	}

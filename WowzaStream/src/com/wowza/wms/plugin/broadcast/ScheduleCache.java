@@ -114,7 +114,7 @@ public class ScheduleCache {
 				while ((program = epg.getProgram()) != null) {
 					Path copyMeFile = Paths.get(appInstance.getStreamStorageDir() + program.getUri());
 					Path copyToFile = Paths.get(appInstance.getStreamStorageDir(), CACHE_DIRECTORY).resolve(program.getFileName());
-			
+					
 					while (true) {
 						if (copyToFile.toFile().exists())
 							break;

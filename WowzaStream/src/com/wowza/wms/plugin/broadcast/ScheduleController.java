@@ -141,10 +141,16 @@ public class ScheduleController extends HTTPProvider2Base implements IServerNoti
 			return;
 		}
 		
-		if ( vhost == null || app == null ) {
-			log.warn("ScheduleController: VHost or Application failed, not running.");
+		if ( vhost == null) {
+			log.warn("ScheduleController: VHost failed, not running.");
 			return;
 		}
+		
+		if (app == null ) {
+			log.warn("ScheduleController: Application failed, not running.");
+			return;
+		}
+		
 		try {
 			appInstance = app.getAppInstance("_definst_");
 		} catch (Exception eappInstance) {
