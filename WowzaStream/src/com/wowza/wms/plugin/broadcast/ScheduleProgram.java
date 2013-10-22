@@ -46,7 +46,7 @@ public class ScheduleProgram {
 		return this.filmTime;
 	}
 	
-	public Date getStartTimeStamp() {
+	public Date getStartTime() {
 		Date startTime = null;
 		try {
 			startTime = parser.parse(startTimeStamp);
@@ -56,7 +56,7 @@ public class ScheduleProgram {
 		return startTime;
 	}
 	
-	public Date getEndTimeStamp() {
+	public Date getEndTime() {
 		Date endTime = null;
 		try {
 			endTime = parser.parse(endTimeStamp);

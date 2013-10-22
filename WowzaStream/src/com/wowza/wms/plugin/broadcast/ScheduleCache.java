@@ -33,7 +33,7 @@ public class ScheduleCache {
 //	private static String DROP_CACHE_TABLE_SQL = "drop table if exists content";
 	private static String CREAT_CACHE_TABLE_SQL = "create table if not exists content (channelid integer, uri string, filename string, starttime timestamp, endtime timestamp)";
 	private static String SELECT_DELETE_PROGRAM_SQL = "select * from content where filename not in (select filename from content where endtime >= ?)";
-	private static String DELETE_PROGRAM_SQL = "delete from content where filename not in (select filename from content where endtime >= ?)";
+	private static String DELETE_PROGRAM_SQL = "delete from content where endtime < ?";
 	private static String INSERT_PROGRAM_SQL = "insert into content values(?, ?, ?, ?, ?)";
 	private static WMSLogger log = WMSLoggerFactory.getLogger(ScheduleCache.class);
 	
@@ -129,7 +129,7 @@ public class ScheduleCache {
 						}
 					}
 					synchronized(lock) {
-						if (!addProgram(channelId, program.getUri(), program.getFileName(), program.getStartTimeStamp() , program.getEndTimeStamp()))
+						if (!addProgram(channelId, program.getUri(), program.getFileName(), program.getStartTime() , program.getEndTime()))
 							log.error("Add Program to DB failed");
 					}
 				}	
@@ -178,7 +178,7 @@ public class ScheduleCache {
 					}
 				}
 				synchronized(lock) {
-					if (!addProgram(channelId, program.getUri(), program.getFileName(), program.getStartTimeStamp() , program.getEndTimeStamp()))
+					if (!addProgram(channelId, program.getUri(), program.getFileName(), program.getStartTime() , program.getEndTime()))
 						log.error("Add Program to DB failed");
 				}
 			}	
@@ -268,7 +268,7 @@ public class ScheduleCache {
 				connection = getConnection();
 		
 				if (connection == null) {
-					log.error("SQLite Error");
+					log.error("SQLite Error: Connection null");
 					return false;
 				}
 				
@@ -282,7 +282,7 @@ public class ScheduleCache {
 				pstatement.executeUpdate();
 				return true;
 			} catch (Exception e) {
-				e.printStackTrace();
+				log.error("SQLLite Error: " + e.getMessage());
 				return false;
 			} finally {
 				try {

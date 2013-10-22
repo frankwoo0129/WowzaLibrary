@@ -81,7 +81,7 @@ public class ScheduleItem implements IStreamActionNotify {
 			sb.append(src).insert(src.lastIndexOf('/') + 1, "mp4:");
 			
 			if (isFirstProgram) {
-				startTime = program.getStartTimeStamp();
+				startTime = program.getStartTime();
 				int sub = Long.valueOf((epg.getSystemTime().getTime() - startTime.getTime())/1000).intValue();
 				if (sub > 0 && epgId == null) {
 					playlist.addItem(sb.toString(), sub, filmTime-sub);
